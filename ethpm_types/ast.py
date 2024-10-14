@@ -1,5 +1,6 @@
+from collections.abc import Iterator
 from enum import Enum
-from typing import Dict, Iterator, List, Optional, Union
+from typing import Optional, Union
 
 from pydantic import model_validator
 
@@ -62,7 +63,7 @@ class ASTNode(BaseModel):
     The offset when the column ends.
     """
 
-    children: List["ASTNode"] = []
+    children: list["ASTNode"] = []
     """
     All sub-AST nodes within this one.
     """
@@ -83,7 +84,7 @@ class ASTNode(BaseModel):
         }
 
     @classmethod
-    def _validate_src(cls, val: Dict) -> SourceMapItem:
+    def _validate_src(cls, val: dict) -> SourceMapItem:
         src = val.get("src")
         if src and isinstance(src, str):
             src = SourceMapItem.parse_str(src)
@@ -97,7 +98,7 @@ class ASTNode(BaseModel):
         return src
 
     @classmethod
-    def find_children(cls, node) -> List["ASTNode"]:
+    def find_children(cls, node) -> list["ASTNode"]:
         children = []
 
         def add_child(data):
@@ -126,7 +127,7 @@ class ASTNode(BaseModel):
         return self.lineno, self.col_offset, self.end_lineno, self.end_col_offset
 
     @property
-    def functions(self) -> List["ASTNode"]:
+    def functions(self) -> list["ASTNode"]:
         """
         All function nodes defined at this level.
 
@@ -173,7 +174,7 @@ class ASTNode(BaseModel):
 
         return None
 
-    def get_nodes_at_line(self, line_numbers: SourceLocation) -> List["ASTNode"]:
+    def get_nodes_at_line(self, line_numbers: SourceLocation) -> list["ASTNode"]:
         """
         Get the AST nodes for the given line number combination
 

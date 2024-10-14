@@ -1,4 +1,5 @@
-from typing import Dict, Iterator, List, Optional, Union
+from collections.abc import Iterator
+from typing import Optional, Union
 
 from pydantic import RootModel, model_validator
 
@@ -37,7 +38,7 @@ class SourceMapItem(BaseModel):
 
     @classmethod
     def parse_str(cls, src_str: str, previous: Optional["SourceMapItem"] = None) -> "SourceMapItem":
-        row: List[Union[int, str]] = [int(i) if i.isnumeric() else i for i in src_str.split(":")]
+        row: list[Union[int, str]] = [int(i) if i.isnumeric() else i for i in src_str.split(":")]
 
         if previous is None:
             start = int(cls._extract_value(row, 0) or -1)
@@ -61,7 +62,7 @@ class SourceMapItem(BaseModel):
 
     @staticmethod
     def _extract_value(
-        row: List[Union[str, int]], item_idx: int, previous: Optional[Union[int, str]] = None
+        row: list[Union[str, int]], item_idx: int, previous: Optional[Union[int, str]] = None
     ):
         if len(row) > item_idx and row[item_idx] != "":
             return row[item_idx]
@@ -133,8 +134,8 @@ class PCMapItem(BaseModel):
         )
 
 
-RawPCMapItem = Dict[str, Optional[Union[str, List[Optional[int]]]]]
-RawPCMap = Dict[str, RawPCMapItem]
+RawPCMapItem = dict[str, Optional[Union[str, list[Optional[int]]]]]
+RawPCMap = dict[str, RawPCMapItem]
 
 
 class PCMap(RootModel[RawPCMap]):
@@ -165,13 +166,13 @@ class PCMap(RootModel[RawPCMap]):
         return self.root[str(pc)]
 
     def __setitem__(self, pc: Union[int, str], value: RawPCMapItem):
-        value_dict: Dict = {"location": value} if isinstance(value, list) else value
+        value_dict: dict = {"location": value} if isinstance(value, list) else value
         self.root[str(pc)] = value_dict
 
     def __contains__(self, pc: Union[int, str]) -> bool:
         return str(pc) in self.root
 
-    def parse(self) -> Dict[int, PCMapItem]:
+    def parse(self) -> dict[int, PCMapItem]:
         """
         Parses the pc map string into a map of ``PCMapItem`` items, using integer pc values as keys.
 

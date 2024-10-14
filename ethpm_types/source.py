@@ -1,10 +1,11 @@
-from pathlib import Path, PosixPath
-from typing import Dict, Iterator, List, Optional, Set, Tuple, Union
+from collections.abc import Iterator
+from pathlib import Path
+from typing import Optional, Union
 
 import requests
 from cid import make_cid  # type: ignore
 from eth_pydantic_types import HexBytes, HexStr
-from pydantic import AnyUrl, RootModel, field_validator, model_validator
+from pydantic import AnyUrl, RootModel, field_validator, model_serializer, model_validator
 from pydantic_core import PydanticCustomError
 
 from ethpm_types.ast import ASTClassification, ASTNode, SourceLocation
@@ -38,7 +39,7 @@ class Compiler(BaseModel):
     [Compiler Input and Output Description](https://docs.soliditylang.org/en/latest/using-the-compiler.html#compiler-input-and-output-json-description).
     """  # noqa: E501
 
-    contractTypes: Optional[List[str]] = None
+    contractTypes: Optional[list[str]] = None
     """
     A list of the contract type names in this package
     that used this compiler to generate its outputs.
@@ -58,7 +59,7 @@ class Compiler(BaseModel):
         return self._stringify_settings(self.settings or {})
 
     @classmethod
-    def _stringify_settings(cls, settings: Dict) -> str:
+    def _stringify_settings(cls, settings: dict) -> str:
         # NOTE: Exclude outputSelection as it may contain contract type names.
         fields = ("evmVersion", "optimizer", "optimize")
         return stringify_dict_for_hash(settings, include=fields)
@@ -91,7 +92,7 @@ class Checksum(BaseModel):
         return cls(algorithm=algorithm, hash=compute_checksum(data, algorithm=algorithm))
 
 
-class Content(RootModel[Dict[int, str]]):
+class Content(RootModel[dict[int, str]]):
     """
     A wrapper around source code line numbers mapped to the content
     string of those lines.
@@ -106,7 +107,7 @@ class Content(RootModel[Dict[int, str]]):
         return self.line_numbers[-1] if self.line_numbers else -1
 
     @property
-    def line_numbers(self) -> List[int]:
+    def line_numbers(self) -> list[int]:
         """
         All line number in order for this piece of content.
         """
@@ -117,10 +118,12 @@ class Content(RootModel[Dict[int, str]]):
         if value is None:
             return {}
 
-        if type(value) is PosixPath:
+        if isinstance(value, Path):
             data = value.read_text()
+        elif isinstance(value, dict):
+            data = value["_root"] if "_root" in value else value
         else:
-            data = value["root"] if "_root" in value else value
+            data = value
 
         if isinstance(data, str):
             return {i + 1: x for i, x in enumerate(data.rstrip().splitlines())}
@@ -136,13 +139,21 @@ class Content(RootModel[Dict[int, str]]):
             keys = list(data.keys())
             return {keys[i]: data[keys[i]] for i in range(last_idx + 1)}
 
+    @model_serializer()
+    def _serialize_content(self, info):
+        content_str = "\n".join(self.root.values())
+        if not content_str.endswith("\n"):
+            content_str = f"{content_str}\n"
+
+        return content_str
+
     def encode(self, *args, **kwargs) -> bytes:
         return str(self).encode(*args, **kwargs)
 
     def items(self):
         return self.root.items()
 
-    def as_list(self) -> List[str]:
+    def as_list(self) -> list[str]:
         return list(self.root.values())
 
     def __str__(self) -> str:
@@ -152,7 +163,7 @@ class Content(RootModel[Dict[int, str]]):
 
         return res
 
-    def __getitem__(self, lineno: Union[int, slice]) -> Union[List[str], str]:
+    def __getitem__(self, lineno: Union[int, slice]) -> Union[list[str], str]:
         if isinstance(lineno, int):
             return self.root[lineno]
 
@@ -179,7 +190,7 @@ class Content(RootModel[Dict[int, str]]):
 class Source(BaseModel):
     """Information about a source file included in a Package Manifest."""
 
-    urls: List[AnyUrl] = []
+    urls: list[AnyUrl] = []
     """Array of urls that resolve to the same source file."""
 
     checksum: Optional[Checksum] = None
@@ -205,14 +216,14 @@ class Source(BaseModel):
     license: Optional[str] = None
     """The type of license associated with this source file."""
 
-    references: Optional[List[str]] = None
+    references: Optional[list[str]] = None
     """
     List of `Source` objects that depend on this object.
     **NOTE**: Not a part of canonical EIP-2678 spec.
     """
     # TODO: Add `SourceId` type and use instead of `str`
 
-    imports: Optional[List[str]] = None
+    imports: Optional[list[str]] = None
     """
     List of source objects that this object depends on.
     **NOTE**: Not a part of canonical EIP-2678 spec.
@@ -262,7 +273,7 @@ class Source(BaseModel):
             raise IndexError("Source has no fetched content.")
 
         line_numbers = self.content.line_numbers
-        lineno: Union[List[int], int] = line_numbers[index]
+        lineno: Union[list[int], int] = line_numbers[index]
         return (
             [self.content[x] for x in lineno] if isinstance(lineno, list) else self.content[lineno]
         )
@@ -279,7 +290,7 @@ class Source(BaseModel):
 
         return len(self.content)
 
-    def model_dump(self, *args, **kwargs) -> Dict:
+    def model_dump(self, *args, **kwargs) -> dict:
         res = super().model_dump(*args, **kwargs)
         if self.content is not None:
             res["content"] = str(self.content)
@@ -440,7 +451,7 @@ class Function(Closure):
         }
         return Content(root=content)
 
-    def get_content_asts(self, location: SourceLocation) -> List[ASTNode]:
+    def get_content_asts(self, location: SourceLocation) -> list[ASTNode]:
         """
         Get all AST nodes for the given location.
 
@@ -469,7 +480,7 @@ class Statement(BaseModel):
     The type of statement it is, such as `source` or a virtual identifier.
     """
 
-    pcs: Set[int] = set()
+    pcs: set[int] = set()
     """
     The PC value for the statement.
     """
@@ -485,7 +496,7 @@ class SourceStatement(Statement):
 
     type: str = "source"
 
-    asts: List[ASTNode]
+    asts: list[ASTNode]
     """The AST nodes from this statement."""
 
     content: Content
@@ -593,7 +604,7 @@ class ContractSource(BaseModel):
     source_path: Optional[Path] = None
     """The path to the source."""
 
-    _function_ast_cache: Dict[str, ASTNode] = {}
+    _function_ast_cache: dict[str, ASTNode] = {}
 
     @field_validator("contract_type", mode="before")
     @classmethod
@@ -718,7 +729,7 @@ class ContractSource(BaseModel):
             offset=offset,
         )
 
-    def _parse_function(self, function: ASTNode) -> Tuple[List[str], List[str]]:
+    def _parse_function(self, function: ASTNode) -> tuple[list[str], list[str]]:
         """
         Parse a function AST into two groups. One being the list of
         lines making up the signature and the other being the content
@@ -747,7 +758,7 @@ class ContractSource(BaseModel):
         return lines[:offset], lines[offset:]
 
 
-def _strip_function(signature_lines: List[str]) -> str:
+def _strip_function(signature_lines: list[str]) -> str:
     name = "".join([x.strip() for x in signature_lines]).rstrip()
 
     # Strip off any common function definition prefixes, if found.

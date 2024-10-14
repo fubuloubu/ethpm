@@ -1,5 +1,9 @@
-# @version 0.3.7
+# @version 0.3.9
 
+# @dev Emitted when number is changed.
+#
+# `newNum` is the new number from the call.
+# Expected every time number changes.
 event NumberChange:
     b: bytes32
     prevNum: uint256
@@ -16,9 +20,23 @@ event FooHappened:
 event BarHappened:
     bar: indexed(uint256)
 
+event EventWithStruct:
+    a_struct: MyStruct
+
+event EventWithAddressArray:
+    some_id: uint256
+    some_address: address
+    participants: DynArray[address, 1024]
+    agents: address[1]
+
+event EventWithUintArray:
+    agents: uint256[1]
+
+# @dev This is the doc for MyStruct
 struct MyStruct:
     a: address
     b: bytes32
+    c: uint256
 
 struct NestedStruct1:
     t: MyStruct
@@ -69,6 +87,14 @@ def fooAndBar():
 
 @external
 def setNumber(num: uint256):
+    """
+    @notice Sets a new number, with restrictions and event emission
+    @dev Only the owner can call this function. The new number cannot be 5.
+    @param num The new number to be set
+    @custom:require num Must not be equal to 5
+    @custom:modifies Sets the `myNumber` state variable
+    @custom:emits Emits a `NumberChange` event with the previous number, the new number, and the previous block hash
+    """
     assert msg.sender == self.owner, "!authorized"
     assert num != 5
     self.prevNumber = self.myNumber
@@ -87,27 +113,27 @@ def setBalance(_address: address, bal: uint256):
 @view
 @external
 def getStruct() -> MyStruct:
-    return MyStruct({a: msg.sender, b: block.prevhash})
+    return MyStruct({a: msg.sender, b: block.prevhash, c: 244})
 
 @view
 @external
 def getNestedStruct1() -> NestedStruct1:
-    return NestedStruct1({t: MyStruct({a: msg.sender, b: block.prevhash}), foo: 1})
+    return NestedStruct1({t: MyStruct({a: msg.sender, b: block.prevhash, c: 244}), foo: 1})
 
 @view
 @external
 def getNestedStruct2() -> NestedStruct2:
-    return NestedStruct2({foo: 2, t: MyStruct({a: msg.sender, b: block.prevhash})})
+    return NestedStruct2({foo: 2, t: MyStruct({a: msg.sender, b: block.prevhash, c: 244})})
 
 @view
 @external
 def getNestedStructWithTuple1() -> (NestedStruct1, uint256):
-    return (NestedStruct1({t: MyStruct({a: msg.sender, b: block.prevhash}), foo: 1}), 1)
+    return (NestedStruct1({t: MyStruct({a: msg.sender, b: block.prevhash, c: 244}), foo: 1}), 1)
 
 @view
 @external
 def getNestedStructWithTuple2() -> (uint256, NestedStruct2):
-    return (2, NestedStruct2({foo: 2, t: MyStruct({a: msg.sender, b: block.prevhash})}))
+    return (2, NestedStruct2({foo: 2, t: MyStruct({a: msg.sender, b: block.prevhash, c: 244})}))
 
 @pure
 @external
@@ -149,8 +175,8 @@ def getStructWithArray() -> WithArray:
         {
             foo: 1,
             arr: [
-                MyStruct({a: msg.sender, b: block.prevhash}),
-                MyStruct({a: msg.sender, b: block.prevhash})
+                MyStruct({a: msg.sender, b: block.prevhash, c: 244}),
+                MyStruct({a: msg.sender, b: block.prevhash, c: 244})
             ],
             bar: 2
         }
@@ -180,16 +206,16 @@ def getAddressArray() -> DynArray[address, 2]:
 @external
 def getDynamicStructArray() -> DynArray[NestedStruct1, 2]:
     return [
-        NestedStruct1({t: MyStruct({a: msg.sender, b: block.prevhash}), foo: 1}),
-        NestedStruct1({t: MyStruct({a: msg.sender, b: block.prevhash}), foo: 2})
+        NestedStruct1({t: MyStruct({a: msg.sender, b: block.prevhash, c: 244}), foo: 1}),
+        NestedStruct1({t: MyStruct({a: msg.sender, b: block.prevhash, c: 244}), foo: 2})
     ]
 
 @view
 @external
 def getStaticStructArray() -> NestedStruct2[2]:
     return [
-        NestedStruct2({foo: 1, t: MyStruct({a: msg.sender, b: block.prevhash})}),
-        NestedStruct2({foo: 2, t: MyStruct({a: msg.sender, b: block.prevhash})})
+        NestedStruct2({foo: 1, t: MyStruct({a: msg.sender, b: block.prevhash, c: 244})}),
+        NestedStruct2({foo: 2, t: MyStruct({a: msg.sender, b: block.prevhash, c: 244})})
     ]
 
 @pure
@@ -270,3 +296,25 @@ def setStruct(_my_struct: MyStruct):
 @external
 def setStructArray(_my_struct_array: MyStruct[2]):
     pass
+
+@external
+def logStruct():
+    _bytes: bytes32 = 0x1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    _struct: MyStruct = MyStruct({
+        a: msg.sender,
+        b: _bytes,
+        c: 244
+    })
+    log EventWithStruct(_struct)
+
+@external
+def logAddressArray():
+    ppl: DynArray[address, 1024] = []
+    ppl.append(msg.sender)
+    agts: address[1] = [msg.sender]
+    log EventWithAddressArray(1001, msg.sender, ppl, agts)
+
+@external
+def logUintArray():
+    agts: uint256[1] = [1]
+    log EventWithUintArray(agts)

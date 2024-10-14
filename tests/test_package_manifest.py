@@ -119,6 +119,11 @@ def test_examples(example_name):
             if not source.content:
                 assert source.content_is_valid(), f"Invalid checksum for '{source_name}'"
 
+    # Ensure we can dump + re-validate.
+    dumped_manifest = package.model_dump()
+    re_package = PackageManifest.model_validate(dumped_manifest)
+    assert re_package == package
+
 
 def test_open_zeppelin_contracts(oz_package):
     for source_name, source in oz_package.sources.items():
@@ -153,21 +158,22 @@ def test_get_contract_type(package_manifest, solidity_contract):
 
 
 def test_unpack_sources():
-    foo_txt = Content(root={0: "line 0 in foo.txt"})
-    baz_txt = Content(root={1: "line 1 in baz.txt"})
+    # NOTE: Purposely using extra utf-8 symbol `“` as an encoding test.
+    foo_txt = Content(root={0: "line “0“ in foo.txt"})
+    baz_txt = Content(root={1: "line “1“ in baz.txt"})
     sources = {"foo.txt": Source(content=foo_txt), "bar/nested/baz.txt": Source(content=baz_txt)}
     manifest = PackageManifest(sources=sources)
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        destination = Path(temp_dir) / "src"
+        destination = Path(temp_dir).resolve() / "src"
         manifest.unpack_sources(destination)
         foo_expected = destination / "foo.txt"
         baz_expected = destination / "bar" / "nested" / "baz.txt"
 
         assert foo_expected.is_file()
         assert baz_expected.is_file()
-        assert foo_expected.read_text() == str(foo_txt)
-        assert baz_expected.read_text() == str(baz_txt)
+        assert foo_expected.read_text(encoding="utf8") == str(foo_txt)
+        assert baz_expected.read_text(encoding="utf8") == str(baz_txt)
 
 
 def test_package_name_name():
@@ -269,4 +275,44 @@ def test_validate_package_manifest_when_is_field(package_manifest):
         manifest: PackageManifest  # type: ignore
 
     response = Response(manifest=package_manifest.model_dump())
-    assert response.manifest.model_dump() == package_manifest.model_dump()
+    actual = response.manifest.model_dump()
+    assert "contractTypes" in actual
+    new_manifest = PackageManifest.model_validate(actual)
+    assert new_manifest.contract_types == package_manifest.contract_types
+    assert new_manifest.sources == package_manifest.sources
+
+
+def test_model_dump(package_manifest):
+    actual = package_manifest.model_dump()
+    assert actual
+    assert actual["manifest"] == "ethpm/3"
+
+    expected_source_ids = ("contracts/SolidityContract.sol", "contracts/VyperContract.vy")
+    for source_id in expected_source_ids:
+        assert source_id in actual["sources"]
+        assert actual["sources"][source_id]["content"]
+
+    expected_contract_names = ("SolidityContract", "VyperContract")
+    for contract_name in expected_contract_names:
+        assert contract_name in actual["contractTypes"]
+        assert actual["contractTypes"][contract_name]["contractName"] == contract_name
+        assert "runtimeBytecode" in actual["contractTypes"][contract_name]
+        assert "deploymentBytecode" in actual["contractTypes"][contract_name]
+        assert "abi" in actual["contractTypes"][contract_name]
+
+
+def test_model_dump_none_sources():
+    manifest = PackageManifest(sources=None)
+    actual = manifest.model_dump()
+    assert "sources" not in actual
+    assert actual["manifest"] == "ethpm/3"
+
+
+def test_model_dump_source_with_none_checksum():
+    manifest = PackageManifest(
+        sources={"this_is_a_source_id": Source(checksum=None, content="I am a source!")}
+    )
+    actual = manifest.model_dump(exclude_none=False)
+    assert "sources" in actual
+    assert "checksum" not in actual["sources"]
+    assert actual["sources"]["this_is_a_source_id"]["content"] == "I am a source!\n"

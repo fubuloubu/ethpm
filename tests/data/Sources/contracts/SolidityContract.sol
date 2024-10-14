@@ -12,6 +12,17 @@ contract SolidityContract {
 
     uint256 constant MAX_FOO = 5;
 
+    /**
+     * @dev This is a doc for an error
+     */
+    error ACustomError();
+
+    /**
+     * @dev Emitted when number is changed.
+     *
+     * `newNum` is the new number from the call.
+     * Expected every time number changes.
+     */
     event NumberChange(
         bytes32 b,
         uint256 prevNum,
@@ -32,9 +43,28 @@ contract SolidityContract {
         uint256 indexed bar
     );
 
+    event EventWithStruct(
+        MyStruct a_struct
+    );
+
+    event EventWithAddressArray(
+        uint32 indexed some_id,
+        address indexed some_address,
+        address[] participants,
+        address[1] agents
+    );
+
+    event EventWithUintArray(
+        uint256[1] agents
+    );
+
+    /**
+     * @dev This is the doc for MyStruct
+     **/
     struct MyStruct {
         address a;
         bytes32 b;
+        uint256 c;
     }
 
     struct NestedStruct1 {
@@ -85,6 +115,15 @@ contract SolidityContract {
         emit BarHappened(1);
     }
 
+
+    /**
+     * @notice Sets a new number, with restrictions and event emission
+     * @dev Only the owner can call this function. The new number cannot be 5.
+     * @param num The new number to be set
+     * @custom:require num Must not be equal to 5
+     * @custom:modifies Sets the `myNumber` state variable
+     * @custom:emits Emits a `NumberChange` event with the previous number, the new number, and the previous block hash
+     */
     function setNumber(uint256 num) public onlyOwner {
         require(num != 5);
         prevNumber = myNumber;
@@ -111,7 +150,7 @@ contract SolidityContract {
     }
 
     function getStruct() public view returns(MyStruct memory) {
-        return MyStruct(msg.sender, blockhash(block.number - 1));
+        return MyStruct(msg.sender, blockhash(block.number - 1), 244);
     }
 
     function getNestedStruct1() public view returns(NestedStruct1 memory) {
@@ -277,5 +316,23 @@ contract SolidityContract {
 
     function setStructArray(MyStruct[2] memory _my_struct_array) public pure {
 
+    }
+
+    function logStruct() public {
+        bytes32 _bytes = 0x1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef;
+        MyStruct memory _struct = MyStruct(msg.sender, _bytes, 244);
+        emit EventWithStruct(_struct);
+    }
+
+    function logAddressArray() public {
+        address[] memory ppl = new address[](1);
+        ppl[0] = msg.sender;
+        address[1] memory agts = [msg.sender];
+        emit EventWithAddressArray(1001, msg.sender, ppl, agts);
+    }
+
+    function logUintArray() public {
+        uint256[1] memory agts = [uint256(1)];
+        emit EventWithUintArray(agts);
     }
 }

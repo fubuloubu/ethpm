@@ -1,5 +1,5 @@
 import pytest
-from eth_pydantic_types import HexBytes
+from eth_pydantic_types import HexStr
 from eth_utils import keccak
 
 from ethpm_types import ContractType
@@ -87,7 +87,7 @@ def test_structs(contract):
     assert len(method_abi.outputs) == 1
     output = method_abi.outputs[0]
     assert output.type == "tuple"
-    assert len(output.components) == 2
+    assert len(output.components) == 3
 
 
 def test_solidity_address_arrays(solidity_contract):
@@ -109,14 +109,14 @@ def test_static_solidity_struct_arrays(solidity_contract):
     method_abi = _select_abi(solidity_contract, "getStaticStructArray")
     array_output = method_abi.outputs[0]
     assert array_output.type == "tuple[3]"
-    assert array_output.canonical_type == "(uint256,(address,bytes32))[3]"
+    assert array_output.canonical_type == "(uint256,(address,bytes32,uint256))[3]"
 
 
 def test_dynamic_solidity_struct_arrays(solidity_contract):
     method_abi = _select_abi(solidity_contract, "getDynamicStructArray")
     array_output = method_abi.outputs[0]
     assert array_output.type == "tuple[]"
-    assert array_output.canonical_type == "((address,bytes32),uint256)[]"
+    assert array_output.canonical_type == "((address,bytes32,uint256),uint256)[]"
 
 
 def test_static_vyper_struct_arrays(vyper_contract):
@@ -128,7 +128,7 @@ def test_static_vyper_struct_arrays(vyper_contract):
     ][0]
     array_output = method_abi.outputs[0]
     assert array_output.type == "tuple[2]"
-    assert array_output.canonical_type == "(uint256,(address,bytes32))[2]"
+    assert array_output.canonical_type == "(uint256,(address,bytes32,uint256))[2]"
 
 
 def test_dynamic_vyper_struct_arrays(vyper_contract):
@@ -140,7 +140,7 @@ def test_dynamic_vyper_struct_arrays(vyper_contract):
     ][0]
     array_output = method_abi.outputs[0]
     assert array_output.type == "tuple[]"
-    assert array_output.canonical_type == "((address,bytes32),uint256)[]"
+    assert array_output.canonical_type == "((address,bytes32,uint256),uint256)[]"
 
 
 @mutable_selector_parametrization
@@ -264,9 +264,9 @@ def test_fallback_and_receive_not_defined(contract):
 
 
 def test_init_bytecode_using_bytes(contract):
-    raw_bytes = HexBytes(contract.deployment_bytecode.bytecode)
+    raw_bytes = HexStr(contract.deployment_bytecode.bytecode)
     new_contract = ContractType(abi=[], deploymentBytecode=raw_bytes)
-    assert new_contract.deployment_bytecode.bytecode == raw_bytes.hex()
+    assert new_contract.deployment_bytecode.bytecode == raw_bytes
 
 
 def test_init_bytecode_using_empty_dict(contract):
@@ -316,8 +316,11 @@ def test_method_ids_are_set(vyper_contract):
         "getNestedArrayMixedDynamic()": "0xabeb2022",
         "getNestedAddressArray()": "0x99e74a4c",
         "functionWithUniqueAmountOfArguments(uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)": "0xacab48d8",  # noqa: E501
-        "setStruct((address,bytes32))": "0x78c067b0",
-        "setStructArray((address,bytes32)[2])": "0x7b92b7ce",
+        "logAddressArray()": "0x0cce7676",
+        "logStruct()": "0x136af17f",
+        "logUintArray()": "0x0e857860",
+        "setStruct((address,bytes32,uint256))": "0x2286a614",
+        "setStructArray((address,bytes32,uint256)[2])": "0xb18bd2a1",
         "owner()": "0x8da5cb5b",
         "myNumber()": "0x23fd0e40",
         "prevNumber()": "0x4825cf6f",
@@ -330,7 +333,7 @@ def test_method_ids_are_set(vyper_contract):
 
 
 def test_selector_identifiers(vyper_contract):
-    assert len(vyper_contract.selector_identifiers.keys()) == 46
+    assert len(vyper_contract.selector_identifiers.keys()) == 52
     assert vyper_contract.selector_identifiers["balances(address)"] == "0x27e235e3"
     assert vyper_contract.selector_identifiers["owner()"] == "0x8da5cb5b"
     assert (
@@ -340,7 +343,7 @@ def test_selector_identifiers(vyper_contract):
 
 
 def test_identifier_lookup(vyper_contract):
-    assert len(vyper_contract.identifier_lookup.keys()) == 46
+    assert len(vyper_contract.identifier_lookup.keys()) == 52
     assert vyper_contract.identifier_lookup["0x27e235e3"].selector == "balances(address)"
     assert vyper_contract.identifier_lookup["0x8da5cb5b"].selector == "owner()"
     assert (
@@ -353,7 +356,7 @@ def test_identifier_lookup(vyper_contract):
 
 def test_get_runtime_bytecode(vyper_contract):
     actual = vyper_contract.get_runtime_bytecode()
-    assert actual.hex().startswith("0x")
+    assert len(actual.hex()) > 0
 
 
 def test_get_runtime_bytecode_no_code(vyper_contract):
@@ -364,10 +367,40 @@ def test_get_runtime_bytecode_no_code(vyper_contract):
 
 def test_get_deployment_bytecode(vyper_contract):
     actual = vyper_contract.get_deployment_bytecode()
-    assert actual.hex().startswith("0x")
+    assert len(actual.hex()) > 0
 
 
 def test_get_deployment_bytecode_no_code(vyper_contract):
     vyper_contract.deployment_bytecode = None
     actual = vyper_contract.get_deployment_bytecode()
     assert actual is None
+
+
+def test_natspecs(contract):
+    actual = contract.natspecs["setNumber(uint256)"]
+    expected_header = (
+        "@custom:emits Emits a `NumberChange` event with the "
+        "previous number, the new number, and the previous block hash"
+    )
+    expected = f"""
+{expected_header}
+@custom:modifies Sets the `myNumber` state variable
+@custom:require num Must not be equal to 5
+@details Only the owner can call this function. The new number cannot be 5.
+@param num uint256 The new number to be set
+""".strip()
+    assert actual == expected
+
+
+def test_natspecs_solidity(solidity_contract):
+    # For some reason, Vyper does not contain natspecs for events.
+    actual_event = solidity_contract.natspecs["NumberChange(bytes32,uint256,string,uint256,string)"]
+    expected_event = (
+        "@details Emitted when number is changed. `newNum` "
+        "is the new number from the call. Expected every time number changes."
+    )
+    assert actual_event == expected_event
+
+    actual_error = solidity_contract.natspecs["ACustomError()"]
+    expected_error = "@details This is a doc for an error"
+    assert actual_error == expected_error

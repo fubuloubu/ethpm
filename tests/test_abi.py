@@ -22,6 +22,26 @@ class TestABIType:
         abi = ABIType(name="foo", type="tuple", components=[ABIType(name="bar", type="string")])
         assert abi.canonical_type == "(string)"
 
+    def test_model_dump(self):
+        abi = ABIType(name="foo", type="string", internalType="string")
+        actual = abi.model_dump()
+        assert actual["internalType"] == "string"
+
+    def test_dict(self):
+        abi = ABIType(name="foo", type="string", internalType="string")
+        actual = abi.dict()
+        assert actual["internalType"] == "string"
+
+    def test_model_dump_json(self):
+        abi = ABIType(name="foo", type="string", internalType="string")
+        actual = abi.model_dump_json()
+        assert "internalType" in actual
+
+    def test_json(self):
+        abi = ABIType(name="foo", type="string", internalType="string")
+        actual = abi.json()
+        assert "internalType" in actual
+
     def test_schema(self):
         actual = ABIType.model_json_schema()
         expected = {
@@ -57,7 +77,7 @@ class TestABIType:
                     "type": "object",
                 }
             },
-            "allOf": [{"$ref": "#/$defs/ABIType"}],
+            "$ref": "#/$defs/ABIType",
         }
         assert actual == expected
 

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 from eth_pydantic_types import Bip122Uri
 from pydantic import AnyUrl, Field, field_validator, model_validator
@@ -9,7 +9,6 @@ from pydantic_core.core_schema import str_schema, with_info_before_validator_fun
 from ethpm_types.base import BaseModel
 from ethpm_types.contract_type import ContractInstance, ContractType
 from ethpm_types.source import Compiler, Source
-from ethpm_types.utils import Algorithm
 
 ALPHABET = set("abcdefghijklmnopqrstuvwxyz")
 NUMBERS = set("0123456789")
@@ -64,7 +63,7 @@ class PackageMeta(BaseModel):
     but should be included when publishing.
     """
 
-    authors: Optional[List[str]] = None
+    authors: Optional[list[str]] = None
     """A list of human readable names for the authors of this package."""
 
     license: Optional[str] = None
@@ -79,10 +78,10 @@ class PackageMeta(BaseModel):
     description: Optional[str] = None
     """Additional detail that may be relevant for this package."""
 
-    keywords: Optional[List[str]] = None
+    keywords: Optional[list[str]] = None
     """Relevant keywords related to this package."""
 
-    links: Optional[Dict[str, AnyUrl]] = None
+    links: Optional[dict[str, AnyUrl]] = None
     """
     URIs to relevant resources associated with this package.
     When possible, authors should use the following keys for the following common resources.
@@ -112,13 +111,13 @@ class PackageManifest(BaseModel):
     ``meta``.
     """
 
-    sources: Optional[Dict[str, Source]] = None
+    sources: Optional[dict[str, Source]] = None
     """
     The sources field defines a source tree that should comprise the full source tree
     necessary to recompile the contracts contained in this release.
     """
 
-    contract_types: Optional[Dict[str, ContractType]] = Field(None, alias="contractTypes")
+    contract_types: Optional[dict[str, ContractType]] = Field(default=None, alias="contractTypes")
     """
     :class:`~ethpm_types.contract_type.ContractType` objects that have been included
     in this release.
@@ -128,13 +127,13 @@ class PackageManifest(BaseModel):
       * Should not include abstracts.
     """
 
-    compilers: Optional[List[Compiler]] = None
+    compilers: Optional[list[Compiler]] = None
     """
     Information about the compilers and their settings that have been
     used to generate the various contractTypes included in this release.
     """
 
-    deployments: Optional[Dict[Bip122Uri, Dict[str, ContractInstance]]] = None
+    deployments: Optional[dict[Bip122Uri, dict[str, ContractInstance]]] = None
     """
     Information for the chains on which this release has
     :class:`~ethpm_types.contract_type.ContractInstance` references as well as the
@@ -146,8 +145,8 @@ class PackageManifest(BaseModel):
     must be unique across all other contract instances for the given chain.
     """
 
-    dependencies: Optional[Dict[PackageName, AnyUrl]] = Field(  # type: ignore[valid-type]
-        None, alias="buildDependencies"
+    dependencies: Optional[dict[PackageName, AnyUrl]] = Field(  # type: ignore[valid-type]
+        default=None, alias="buildDependencies"
     )
     """
     A mapping of EthPM packages that this project depends on.
@@ -248,29 +247,6 @@ class PackageManifest(BaseModel):
             else None
         )
 
-    def model_dump(self, *args, **kwargs) -> Dict:
-        res = super().model_dump(*args, **kwargs)
-        sources = res.get("sources", {})
-        for source_id, src in sources.items():
-            if "content" in src and isinstance(src["content"], dict):
-                content = "\n".join(src["content"].values())
-                if content and not content.endswith("\n"):
-                    content = f"{content}\n"
-
-                src["content"] = content
-
-            elif "content" in src and src["content"] is None:
-                src["content"] = ""
-
-            if (
-                "checksum" in src
-                and "algorithm" in src["checksum"]
-                and isinstance(src["checksum"]["algorithm"], Algorithm)
-            ):
-                src["checksum"]["algorithm"] = src["checksum"]["algorithm"].value
-
-        return res
-
     def unpack_sources(self, destination: Path):
         """
         Unpack a package manifest's content sources into
@@ -295,7 +271,7 @@ class PackageManifest(BaseModel):
             # Create nested directories as needed.
             source_path.parent.mkdir(parents=True, exist_ok=True)
 
-            source_path.write_text(content)
+            source_path.write_text(content, encoding="utf8")
 
     def get_compiler(self, name: str, version: str) -> Optional[Compiler]:
         """

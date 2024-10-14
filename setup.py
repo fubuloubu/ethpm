@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 from pathlib import Path
 
 from setuptools import find_packages, setup
@@ -15,13 +14,14 @@ extras_require = {
         # Test-only deps
         "PyGithub>=1.54,<2.0",  # Necessary to pull official schema from github
         "hypothesis-jsonschema==0.19.0",  # Fuzzes based on a json schema
+        "eth-hash[pysha3]",  # For eth-utils address checksumming
     ],
     "lint": [
-        "black>=24.4.2,<25",  # Auto-formatter and linter
-        "mypy>=1.10.0,<2",  # Static type analyzer
+        "black>=24.8.0,<25",  # Auto-formatter and linter
+        "mypy>=1.11.2,<2",  # Static type analyzer
         "types-setuptools",  # Needed for mypy type shed
         "types-requests",  # Needed for mypy type shed
-        "flake8>=7.0.0,<8",  # Style linter
+        "flake8>=7.1.1,<8",  # Style linter
         "flake8-breakpoint>=1.1.0,<2",  # Detect breakpoints left in code
         "flake8-print>=5.0.0,<6",  # Detect print statements left in code
         "isort>=5.13.2,<6",  # Import sorting linter
@@ -77,13 +77,12 @@ setup(
     include_package_data=True,
     install_requires=[
         "pydantic>=2.4.2,<3",
-        "eth-utils>=2.1.0,<3",
+        "eth-utils>=2.1.0,<6",
         "py-cid>=0.3.0,<0.4",
-        "requests>=2.29.0,<3",
-        "typing_extensions>=4.0,<5",
-        "eth-pydantic-types>=0.1.0a4",
+        "requests>=2.32.3,<3",
+        "eth-pydantic-types>=0.1.0,<0.2",
     ],
-    python_requires=">=3.8,<4",
+    python_requires=">=3.9,<4",
     extras_require=extras_require,
     py_modules=["ethpm_types"],
     license="Apache-2.0",
@@ -99,7 +98,6 @@ setup(
         "Operating System :: MacOS",
         "Operating System :: POSIX",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",

@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional, Union
+from typing import Literal, Optional, Union
 
 from pydantic import ConfigDict, Field
 from typing_extensions import Self
@@ -19,7 +19,7 @@ class ABIType(BaseModel):
     The value-type, such as ``address`` or ``address[]``.
     """
 
-    components: Optional[List["ABIType"]] = None
+    components: Optional[list["ABIType"]] = None
     """
     A field of sub-types that makes up this type.
     Tuples and structs tend to have this field.
@@ -113,7 +113,7 @@ class ConstructorABI(BaseABI):
     Defaults to the value ``"nonpayable"``.
     """
 
-    inputs: List[ABIType] = []
+    inputs: list[ABIType] = []
     """
     Contract constructor arguments.
     """
@@ -224,12 +224,12 @@ class MethodABI(BaseABI):
     Defaults to the value ``"nonpayable"``.
     """
 
-    inputs: List[ABIType] = []
+    inputs: list[ABIType] = []
     """
     Inputs to the method as :class:`~ethpm_types.abi.ABIType` objects.
     """
 
-    outputs: List[ABIType] = []
+    outputs: list[ABIType] = []
     """
     What the method returns as :class:`~ethpm_types.abi.ABIType` objects.
     """
@@ -305,7 +305,7 @@ class EventABI(BaseABI):
     name: str
     """The name of the event."""
 
-    inputs: List[EventABIType] = []
+    inputs: list[EventABIType] = []
     """
     Event properties defined as :class:`~ethpm_types.abi.EventABIType` objects.
     """
@@ -353,7 +353,7 @@ class ErrorABI(BaseABI):
     name: str
     """The name of the error."""
 
-    inputs: List[ABIType] = []
+    inputs: list[ABIType] = []
     """
     Inputs when raising the error defined as
     :class:`~ethpm_types.abi.ABIType` objects.
@@ -389,7 +389,7 @@ class StructABI(BaseABI):
     name: str
     """The name of the struct."""
 
-    members: List[ABIType]
+    members: list[ABIType]
     """The properties that compose the struct."""
 
     model_config = ConfigDict(extra="allow")
