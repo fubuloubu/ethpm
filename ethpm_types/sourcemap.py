@@ -1,10 +1,12 @@
 from collections.abc import Iterator
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from pydantic import RootModel, model_validator
 
 from ethpm_types.base import BaseModel
-from ethpm_types.utils import SourceLocation
+
+if TYPE_CHECKING:
+    from ethpm_types.utils import SourceLocation
 
 
 class SourceMapItem(BaseModel):
@@ -125,7 +127,7 @@ class PCMapItem(BaseModel):
     dev: Optional[str] = None
 
     @property
-    def location(self) -> SourceLocation:
+    def location(self) -> "SourceLocation":
         return (
             (self.line_start or -1),
             (self.column_start or -1),

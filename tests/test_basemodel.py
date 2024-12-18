@@ -7,7 +7,7 @@ from ethpm_types import BaseModel
 
 
 @pytest.fixture
-def MyModel():
+def MyModel() -> type:
     class _MyModel(BaseModel):
         name: str
         input_types: dict[str, Any]

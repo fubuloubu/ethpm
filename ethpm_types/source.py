@@ -1,23 +1,26 @@
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import requests
 from cid import make_cid  # type: ignore
 from eth_pydantic_types import HexBytes, HexStr
-from pydantic import AnyUrl, RootModel, field_validator, model_serializer, model_validator
+from pydantic import RootModel, field_validator, model_serializer, model_validator
 from pydantic_core import PydanticCustomError
 
 from ethpm_types.ast import ASTClassification, ASTNode, SourceLocation
 from ethpm_types.base import BaseModel
 from ethpm_types.contract_type import ContractType
-from ethpm_types.sourcemap import PCMap
 from ethpm_types.utils import (
     CONTENT_ADDRESSED_SCHEMES,
     Algorithm,
+    AnyUrl,
     compute_checksum,
     stringify_dict_for_hash,
 )
+
+if TYPE_CHECKING:
+    from ethpm_types.sourcemap import PCMap
 
 
 class Compiler(BaseModel):
@@ -639,7 +642,7 @@ class ContractSource(BaseModel):
         return validate_ast(self.contract_type)
 
     @property
-    def pcmap(self) -> PCMap:
+    def pcmap(self) -> "PCMap":
         """The contract type PCMap."""
         return validate_pcmap(self.contract_type)
 
@@ -828,7 +831,7 @@ def validate_ast(contract_type: ContractType) -> ASTNode:
     )
 
 
-def validate_pcmap(contract_type: ContractType) -> PCMap:
+def validate_pcmap(contract_type: ContractType) -> "PCMap":
     """
     A validator used by :class:`~ethpm_types.source.ContractSource`
     to ensure the given :class:`~ethpm_types.contract_type.ContractType`

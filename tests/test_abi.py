@@ -123,6 +123,24 @@ class TestEventABI:
         assert event.inputs[2].indexed is False
         assert event.inputs[2].type == "uint256"
 
+    def test_from_signature_with_nameless_param(self):
+        signature = "Transfer(address indexed from, address indexed to, uint256 value, uint)"
+        event = EventABI.from_signature(signature)
+        assert event.name == "Transfer"
+        assert event.signature == signature
+        assert event.inputs[0].name == "from"
+        assert event.inputs[0].indexed
+        assert event.inputs[0].type == "address"
+        assert event.inputs[1].name == "to"
+        assert event.inputs[1].indexed
+        assert event.inputs[1].type == "address"
+        assert event.inputs[2].name == "value"
+        assert event.inputs[2].indexed is False
+        assert event.inputs[2].type == "uint256"
+        assert event.inputs[3].name == ""
+        assert event.inputs[3].indexed is False
+        assert event.inputs[3].type == "uint"
+
     @pytest.mark.parametrize(
         "sig",
         [

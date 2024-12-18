@@ -2,11 +2,14 @@ import json
 from collections.abc import Sequence
 from enum import Enum
 from hashlib import md5, sha3_256, sha256
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any, Optional, Union
 
 from eth_pydantic_types import HexStr
+from pydantic import AnyUrl as _AnyUrl
+from pydantic import FileUrl
 
 CONTENT_ADDRESSED_SCHEMES = {"ipfs"}
+AnyUrl = Union[FileUrl, _AnyUrl]
 
 
 class Algorithm(str, Enum):
@@ -110,7 +113,9 @@ def parse_signature(sig: str) -> tuple[str, list[tuple[str, str, str]], list[str
 
     for intup in input_tups:
         inlen = len(intup)
-        if inlen == 2:
+        if inlen == 1:
+            inputs.append((intup[0], "", ""))
+        elif inlen == 2:
             inputs.append((intup[0], "", intup[1]))
         elif inlen == 3 and intup[1] == "indexed":
             assert len(intup) == 3  # mypy more like mywhy
